@@ -1,20 +1,14 @@
 
-# 1 ArgoCD安装
+# 1 Requirements
 
-## 1.1 通过二进制文件 
-
-我们也可以使用命令行客户端来访问 Argo CD，首先使用 curl 命令下载：
-```
-curl -LO https://github.com/argoproj/argo-cd/releases/download/v2.7.1/argocd-linux-amd64
-```
-
-然后使用 install 命令安装：
-```
-$ sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-```
+- Installed [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) command-line tool.
+- Have a [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) file (default location is `~/.kube/config`).
+- CoreDNS. Can be enabled for microk8s by `microk8s enable dns && microk8s stop && microk8s start`
 
 
-## 1.2 通过 kubectl 
+# 2 ArgoCD安装
+
+## 2.1 通过 kubectl  (官方推荐)
 
 ```
 1：创建一个命名空间存放argocd的Pod
@@ -49,6 +43,15 @@ pod/argocd-server-664b7c6878-9tjlh                      1/1     Running   0     
 ```
 
 
+1 new namespace "argocd" 会被创造出来
+The installation manifests include ClusterRoleBinding resources that reference argocd namespace. If you are installing Argo CD into a different namespace then make sure to update the namespace reference.
+
+2 ClusterRoleBinding resources 
+The installation manifests include ClusterRoleBinding resources that reference argocd namespace. If you are installing Argo CD into a different namespace then make sure to update the namespace reference.
+
+---
+以下的都可以省略 
+
 安装客户端
 ```
  	
@@ -77,7 +80,69 @@ kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=de
 `argo submit --serviceaccount [name]`
 
 
-## 1.3 多租户
+
+## 2.2 通过二进制文件 
+
+我们也可以使用命令行客户端来访问 Argo CD，首先使用 curl 命令下载：
+```
+curl -LO https://github.com/argoproj/argo-cd/releases/download/v2.7.1/argocd-linux-amd64
+```
+
+然后使用 install 命令安装：
+```
+$ sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+```
+
+
+
+## 2.3 Kustomize
+Argo CD 配置清单也可以使用 Kustomize 来部署，建议通过远程的 URL 来调用配置清单，使用 patch 来配置自定义选项。
+
+```
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+resources:
+- https://raw.githubusercontent.com/argoproj/argo-cd/v2.0.4/manifests/ha/install.yaml
+
+```
+
+For an example of this, see the [kustomization.yaml](https://github.com/argoproj/argoproj-deployments/blob/master/argocd/kustomization.yaml) used to deploy the [Argoproj CI/CD infrastructure](https://github.com/argoproj/argoproj-deployments#argoproj-deployments).
+
+
+## 2.4 Helm
+
+Argo CD 的 Helm Chart 目前由社区维护，地址： https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd。
+
+https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/#helm
+
+argo-cd 5.5.22 · argoproj/argo (artifacthub.io)
+
+```
+helm repo add argo https://argoproj.github.io/argo-helm
+helm install my-argo-cd argo/argo-cd --version 5.5.22
+```
+
+## 2.5 自定义安装 
+
+Argo CD manifests 也可以使用自定义安装。建议将 manifests 作为远程资源包含在内，并使用 Kustomize 补丁应用其他自定义
+```
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+resources:
+- https://raw.githubusercontent.com/argoproj/argo-cd/v2.0.4/manifests/ha/install.yaml
+
+```
+
+
+# 3 two type of installations
+
+https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/
+
+## 3.1 多租户 Multi-Cluster
 
 Argo CD 最常用的部署模式是多租户，一般如果组织内部包含多个应用研发团队，就会采用这种部署模式。用户可以使用可视化界面或者 argocd CLI 来访问 Argo CD。argocd CLI 必须先通过 `argocd login <server-host>` 来获取 Argo CD 的访问授权
 
@@ -111,7 +176,18 @@ $ argocd login cd.argoproj.io --core
 - [ha/namespace-install.yaml](https://icloudnative.io/go/?target=aHR0cHM6Ly9naXRodWIuY29tL2FyZ29wcm9qL2FyZ28tY2QvYmxvYi9tYXN0ZXIvbWFuaWZlc3RzL2hhL25hbWVzcGFjZS1pbnN0YWxsLnlhbWw%3d) - 与上文提到的 namespace-install.yaml 相同，但配置了相关组件的多个副本。
 
 
-## 1.4 Core
+## 3.2 Core
+
+If you are not interested in UI, SSO, and multi-cluster features, then you can install only the [core](https://argo-cd.readthedocs.io/en/stable/getting_started/operator-manual/core/#installing) Argo CD components.
+
+
+The Argo CD Core installation is primarily used to deploy Argo CD in headless mode. This type of installation is most suitable for cluster administrators who independently use Argo CD and don't need multi-tenancy features. This installation includes fewer components and is easier to setup. The bundle does not include the API server or UI, and installs the lightweight (non-HA) version of each component.
+
+Installation manifest is available at [core-install.yaml](https://github.com/argoproj/argo-cd/blob/master/manifests/core-install.yaml).
+
+For more details about Argo CD Core please refer to the [official documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/core/)
+
+
 
 Core 模式也就是最精简的部署模式，不包含 API Server 和可视化界面，只部署了每个组件的轻量级（非高可用）版本。
 用户需要 Kubernetes 访问权限来管理 Argo CD，因此必须使用下面的命令来配置 argocd CLI：
@@ -135,59 +211,36 @@ argocd admin dashboard
 具体的 manifests 对应于仓库中的 core-install.yaml 。
 
 
-## 1.5 Kustomize
-Argo CD 配置清单也可以使用 Kustomize 来部署，建议通过远程的 URL 来调用配置清单，使用 patch 来配置自定义选项。
 
+# 4 安装完成后还需要配置证书 
+
+This default installation will have a self-signed certificate and cannot be accessed without a bit of extra work. Do one of:
+
+- Follow the [instructions to configure a certificate](https://argo-cd.readthedocs.io/en/stable/operator-manual/tls/) (and ensure that the client OS trusts it).
+- Configure the client OS to trust the self signed certificate.
+- Use the --insecure flag on all Argo CD CLI operations in this guide.
+
+
+# 5 使用命令将namespace长期设置为argocd
+
+Default namespace for `kubectl` config must be set to `argocd`. This is only needed for the following commands since the previous commands have -n argocd already: `kubectl config set-context --current --namespace=argocd`
+
+
+# 6 Download Argo CD CLI 
+
+Download the latest Argo CD version from [https://github.com/argoproj/argo-cd/releases/latest](https://github.com/argoproj/argo-cd/releases/latest). More detailed installation instructions can be found via the [CLI installation documentation](https://argo-cd.readthedocs.io/en/stable/cli_installation/).
+
+Also available in Mac, Linux and WSL Homebrew:
 ```
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: argocd
-resources:
-- https://raw.githubusercontent.com/argoproj/argo-cd/v2.0.4/manifests/ha/install.yaml
-
-```
-
-## 1.6 Helm
-
-Argo CD 的 Helm Chart 目前由社区维护，地址： https://github.com/argoproj/argo-helm/tree/master/charts/argo-cd。
-
-https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/#helm
-
-argo-cd 5.5.22 · argoproj/argo (artifacthub.io)
-
-```
-helm repo add argo https://argoproj.github.io/argo-helm
-helm install my-argo-cd argo/argo-cd --version 5.5.22
-```
-
-## 1.7 自定义安装 
-
-Argo CD manifests 也可以使用自定义安装。建议将 manifests 作为远程资源包含在内，并使用 Kustomize 补丁应用其他自定义
-```
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-namespace: argocd
-resources:
-- https://raw.githubusercontent.com/argoproj/argo-cd/v2.0.4/manifests/ha/install.yaml
-
-```
-
-# 2 登录集群
-
-对argoCD的操作需要先登录。
-```
-[root@node1 ~]# argocd login 10.233.37.63
-WARNING: server certificate had error: x509: cannot validate certificate for 10.233.37.63 because it doesn't contain any IP SANs. Proceed insecurely (y/n)? y
-Username: admin
-Password: 
-'admin:login' logged in successfully
-Context '10.233.37.63' updated
+brew install argocd
 ```
 
 
-# 3 访问ArgoCD
+# 7 Access The Argo CD API Server
+
+
+By default, the Argo CD API server is not exposed with an external IP. To access the API server, choose one of the following techniques to expose the Argo CD API server:
+
 
 
 部署完成后，可以通过 Service argocd-server 来访问可视化界面
@@ -205,7 +258,12 @@ argocd-server                             ClusterIP   10.98.23.255     <none>   
 argocd-server-metrics                     ClusterIP   10.103.184.121   <none>        8083/TCP                     5m8s
 
 ```
-## 3.1 方法1: 修改 service type 
+
+
+
+
+## 7.1 方法1: 修改 service type 
+Change the argocd-server service type to LoadBalancer:
 Argo CD 部署好之后，默认情况下，API Server 从集群外是无法访问的，这是因为 API Server 的服务类型是 ClusterIP：
 ```
 $ kubectl get svc argocd-server -n argocd
@@ -260,7 +318,9 @@ argocd-server-metrics                     ClusterIP   200.1.216.113   <none>    
 [![](https://img2022.cnblogs.com/blog/2222036/202204/2222036-20220423181139428-1569290379.png)](https://img2022.cnblogs.com/blog/2222036/202204/2222036-20220423181139428-1569290379.png)
 
 
-## 3.2 方法2 使用 kubectl port-forward 命令进行端口转发
+## 7.2 方法2 使用 kubectl port-forward 命令进行端口转发
+
+Kubectl port-forwarding can also be used to connect to the API server without exposing the service.
 可以通过ingress或者nodeport方式暴露进行访问！
 因为需要访问，我们可以通过NodePort或者Ingress暴露 argocd-server
 
@@ -278,12 +338,31 @@ Forwarding from [::1]:8080 -> 8080
 
 ```
 
+The API server can then be accessed using https://localhost:8080
+
+## 7.3 方法3  Ingress
+
+Follow the [ingress documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/) on how to configure Argo CD with ingress.
 
 
-# 4 登录密码
+
+## 7.4 不构建AccessToArgoCDApiServer也可以使用CLI的方式 
+
+The CLI environment must be able to communicate with the Argo CD API server. If it isn't directly accessible as described above in step 3, you can tell the CLI to access it using port forwarding through one of these mechanisms: 1) add `--port-forward-namespace argocd` flag to every CLI command; or 2) set `ARGOCD_OPTS` environment variable: `export ARGOCD_OPTS='--port-forward-namespace argocd'`.
+
+
+
+
+# 8 查询登录密码
 
 可以看到 API Server 需要登录才能访问，初始用户名为 admin，初始密码在部署时随机生成，并保存在 argocd-initial-admin-secret 这个 Secret 里：
 
+The initial password for the `admin` account is auto-generated and stored as clear text in the field `password` in a secret named `argocd-initial-admin-secret` in your Argo CD installation namespace. You can simply retrieve this password using the `argocd` CLI:
+
+```
+argocd admin initial-password -n argocd
+
+```
 
 ```
 $ kubectl get secrets argocd-initial-admin-secret -n argocd -o yaml
@@ -324,7 +403,8 @@ $ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.p
 
 
 
-修改默认密码
+# 9 修改默认密码
+
 ```
 注：
 修改密码前，先使用 argocd login 登录到 ArgoCD 服务端。
@@ -343,9 +423,23 @@ $ argocd account update-password --account admin --current-password xxxx --new-p
 输入用户名和密码登录成功后，进入 Argo CD 的应用管理页面：
 [![](https://img2022.cnblogs.com/blog/2222036/202204/2222036-20220423181358502-1739640554.png)](https://img2022.cnblogs.com/blog/2222036/202204/2222036-20220423181358502-1739640554.png)
 
+## 9.1 删除 argocd-initial-admin-secret
+
+You should delete the argocd-initial-admin-secret from the Argo CD namespace once you changed the password. The secret serves no other purpose than to store the initially generated password in clear and can safely be deleted at any time. 
+
+It will be re-created on demand by Argo CD if a new admin password must be re-generated.
 
 
 
 
+# 10 登录Argocd
 
-
+对argoCD的操作需要先登录。
+```
+[root@node1 ~]# argocd login 10.233.37.63
+WARNING: server certificate had error: x509: cannot validate certificate for 10.233.37.63 because it doesn't contain any IP SANs. Proceed insecurely (y/n)? y
+Username: admin
+Password: 
+'admin:login' logged in successfully
+Context '10.233.37.63' updated
+```

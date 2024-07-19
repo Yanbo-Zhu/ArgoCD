@@ -1,7 +1,31 @@
 
 https://github.com/devops-ws/argo-cd-guide
 
-# 1 同步策略
+
+# 1 Register A Cluster To Deploy Apps To (Optional)
+
+
+This step registers a cluster's credentials to Argo CD, and is only necessary when deploying to an external cluster. When deploying internally (to the same cluster that Argo CD is running in), https://kubernetes.default.svc should be used as the application's K8s API server address.
+
+First list all clusters contexts in your current kubeconfig:
+
+```
+kubectl config get-contexts -o name
+```
+
+Choose a context name from the list and supply it to `argocd cluster add CONTEXTNAME`. For example, for docker-desktop context, run:
+
+```
+argocd cluster add docker-desktop
+```
+
+The above command installs a ServiceAccount (`argocd-manager`), into the kube-system namespace of that kubectl context, and binds the service account to an admin-level ClusterRole. Argo CD uses this service account token to perform its management tasks (i.e. deploy/monitoring).
+
+
+
+> The rules of the `argocd-manager-role` role can be modified such that it only has `create`, `update`, `patch`, `delete` privileges to a limited set of namespaces, groups, kinds. However `get`, `list`, `watch` privileges are required at the cluster-scope for Argo CD to function.
+
+# 2 同步策略
 
 
 Argo CD 可以指定 Git 仓库中的特定目录，已经一些通用配置：
@@ -45,7 +69,7 @@ spec:
 
 
 
-# 2 Git仓库
+# 3 Git仓库
 
 Argo CD 支持 HTTPS、SSH 协议的 Git 仓库，下面的例子中使用的是 SSH 协议：
 ```
@@ -66,7 +90,7 @@ type: Opaque
 ```
 
 
-# 3 Helm 仓库
+# 4 Helm 仓库
 截至 v2.5.2 Argo CD 界面还支持添加 Helm 类型的仓库，可以通过命令行或者 YAML 的方式来添加。
 
 ```
@@ -89,7 +113,7 @@ type: Opaque
 OCI 类型的 Helm 仓库安装示例请查看 examples/skywalking
 
 
-# 4 配置管理插件
+# 5 配置管理插件
 
 
 配置管理工具（Config Management Plugin，CMP）使得 Argo CD 可以支持 Helm、Kustomize 以外的（可转化为 Kubernetes 资源）格式。
@@ -170,7 +194,7 @@ kubectl create secret generic git-secret --from-file=id_rsa=/root/.ssh/id_rsa --
 
 如果再发散性地思考下，我们也可以通过自定义格式的 YAML（或 JSON 等任意格式）文件转为 Jenkins 可以识别的 Jenkinsfile，或其他持续集成工具的配置文件格式。
 
-# 5 凭据管理
+# 6 凭据管理
 
 
 可以通过下面的命令，生成一个加密后的 Secret：
@@ -187,7 +211,7 @@ kubectl create secret docker-registry harbor --docker-server='10.121.218.184:300
   --dry-run=client -oyaml -n default | kubeseal -oyaml
 ```
 
-# 6 单点登录
+# 7 单点登录
 
 
 Argo CD [内置了 Dex 服务](https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/#dex)，我们可以参考如下的配置来对接外部身份认证服务：
@@ -237,7 +261,7 @@ data:
 
 `https://10.121.218.184:31392/api/dex/.well-known/openid-configuration`
 
-# 7 多集群
+# 8 多集群
 
 ```
 #!title: Create New Cluster
@@ -305,7 +329,7 @@ EOF
 
 详情请查看 [https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#clusters](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#clusters)
 
-# 8 自动更新镜像
+# 9 自动更新镜像
 
 
 借助 [argocd-image-updater](https://github.com/argoproj-labs/argocd-image-updater) 可以自动更新应用的镜像，参考配置如下：
@@ -321,7 +345,7 @@ metadata:
     argocd-image-updater.argoproj.io/update-strategy: digest
 ```
 
-# 9 通知
+# 10 通知
 
 Argo CD 内置了[消息通知模块](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/)，只要添加下面的 ConfigMap 即可，这里以发送消息到钉钉为例：
 
@@ -361,7 +385,7 @@ data:
 
 
 
-# 4 备份与恢复
+# 11 备份与恢复
 
 官方的方法简单粗暴，使用会直接报错；需要给出argoCD部署所在集群的config文件和所在的命名空间。导出的内容为所有资源信息的`yaml 资源配置清单`。
 
@@ -375,9 +399,9 @@ argocd admin export --kubeconfig .kube/config -n argo > argocd_$(date +%F).conf_
 argocd admin import --kubeconfig .kube/config -n argo < argocd_$(date +%F).conf_bak
 ```
 
-# 5 用户管理
+# 12 用户管理
 
-## 5.1 查看用户
+## 12.1 查看用户
 
 ```bash
 [root@node1 ~]# argocd account list
@@ -390,7 +414,7 @@ system    true     login
 # login 允许从UI登录
 ```
 
-## 5.2 添加用户
+## 12.2 添加用户
 
 在argoCD的命名空间里面直接编辑cm。
 
@@ -424,7 +448,7 @@ admin.enabled: "false"      # 是否启用admin用户
 accounts.pre-user: login    # 新建pre-user的用户，允许从UI登录
 ```
 
-## 5.3 用户的鉴权
+## 12.3 用户的鉴权
 
 参考链接：[https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/)
 
@@ -478,7 +502,7 @@ g, test-admin, role:test-admins
 
 动作：`get``create``update``delete``sync``override``action/<group/kind/action-name>`
 
-## 5.4 修改用户密码
+## 12.4 修改用户密码
 
 默认输入admin用户的秘密码就可以更改其它用的权限配置。根据交互的提示信息输入即可。
 
@@ -498,7 +522,7 @@ dev-user
 ```
 
 
-# 6 argoCD 时间问题
+# 13 argoCD 时间问题
 
 [官方文档]([模板 - Argo CD - 声明性 GitOps CD 用于 Kubernetes (argo-cd.readthedocs.io)](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/templates/#change-the-timezone))
 
@@ -523,7 +547,7 @@ env:
   value: Asia/Shanghai
 ```
 
-# 7 打开终端功能
+# 14 打开终端功能
 
 ```bash
 # kubectl edit cm -n argo argocd-cm
@@ -544,7 +568,7 @@ p, role:myrole, exec, create, */*, allow
 
 ![](https://img2022.cnblogs.com/blog/1606824/202211/1606824-20221106155630264-747412506.png)
 
-# 8 远程仓库管理
+# 15 远程仓库管理
 
 argoCD 的远程仓库，如果创建了同名的远程仓库会出现无法删除的情况，仓库配置信息是存储在部署的命名空间下使用`secret`来存储的。手动的在UI删除会直接报错。需要手动的在k8s集群中删除。
 
@@ -571,7 +595,7 @@ argo-test
 # kubectl delete secrets repo-1015242351 -n argo
 ```
 
-# 9 GitlabCI 实现对argoCD模板的更新.
+# 16 GitlabCI 实现对argoCD模板的更新.
 
 通过在CI中运行stage运行脚本的方式，就可以对app的模板进行更新，而不用修改模板本身，这样实现了统一的部署模板。
 
@@ -619,7 +643,7 @@ echo -e "\033[31m CI_PROJECT_NAMESPACE:    -------------------------------------
 echo -e "\033[31m CI_PIPELINE_ID:     --------------------------------------------------- $CI_PIPELINE_ID \033[0m"
 ```
 
-# 10 模板中生成随机数的问题
+# 17 模板中生成随机数的问题
 
 [https://argo-cd.readthedocs.io/en/stable/user-guide/helm/#random-data](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/#random-data)
 

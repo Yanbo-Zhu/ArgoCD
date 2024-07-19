@@ -1,8 +1,9 @@
 
 # 1 功能架构
-从功能架构来看，Argo CD 主要有三个组件：API Server、Repository Server 和 Application Controller。从 GitOps 工作流的角度来看，总共分为 3 个阶段：检索、调谐和呈现。
+从功能架构来看，Argo CD 主要有三个组件：API Server、Repository Server 和 Application Controller。
+从 GitOps 工作流的角度来看，总共分为 3 个阶段：检索、调谐和呈现。
 
-
+https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/
 
 ![](image/jql6DZiAV92XWGT.png)
 
@@ -18,11 +19,20 @@ Repository Server 是一个内部服务，它负责保存应用程序 Git 仓库
 - 应用程序路径
 - 模板的特定设置：比如 helm values.yaml 等
 
+The repository server is an internal service which maintains a local cache of the Git repository holding the application manifests. It is responsible for generating and returning the Kubernetes manifests when provided the following inputs:
+
+- repository URL
+- revision (commit, tag, branch)
+- application path
+- template specific settings: parameters, helm values.yaml
 
 ## 1.2 调谐 – Application Controller
 Application Controller 是一个 Kubernetes controller，它持续监听正在运行的应用程序并将当前的实时状态与所需的目标状态（如 repo 中指定的）进行比较。它检测 OutOfSync 应用程序状态并有选择地采取纠正措施。它负责为生命周期事件（PreSync、Sync、PostSync）调用任何用户定义的 hooks。
 
 调谐（Reconcile）阶段是最复杂的，这个阶段会将 Repository Server 获得的配置清单与反映集群当前状态的实时配置清单进行对比，一旦检测到应用处于 OutOfSync 状态，Application Controller 就会采取修正措施，使集群的实际状态与期望状态保持一致。
+
+The application controller is a Kubernetes controller which continuously monitors running applications and compares the current, live state against the desired target state (as specified in the repo). It detects `OutOfSync` application state and optionally takes corrective action. It is responsible for invoking any user-defined hooks for lifecycle events (PreSync, Sync, PostSync)
+
 
 ## 1.3 呈现 – API Server
 
@@ -38,7 +48,18 @@ Argo CD 的 API Server 是一个 gRPC/REST server，它公开 Web UI、CLI 以�
     Git Webhook 事件的监听器/转发器。Git webhook 事件的 listener/forwarder；
 
 
+The API server is a gRPC/REST server which exposes the API consumed by the Web UI, CLI, and CI/CD systems. It has the following responsibilities:
+
+- application management and status reporting
+- invoking of application operations (e.g. sync, rollback, user-defined actions)
+- repository and cluster credential management (stored as K8s secrets)
+- authentication and auth delegation to external identity providers
+- RBAC enforcement
+- listener/forwarder for Git webhook events
+
+
 # 2 argocd 的5个 pod
+
 
 https://blog.csdn.net/u010039418/article/details/128009407
 ```
