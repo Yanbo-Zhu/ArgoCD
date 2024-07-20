@@ -69,7 +69,7 @@ metadata:
 
 # 2 Spec的每个field详细说明
 
-
+https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
 
 
 ```yaml
