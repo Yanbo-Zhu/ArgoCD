@@ -494,11 +494,38 @@ application.argoproj.io/myapp-argo-application created
 
 如果你更新了 deployment.yaml 中的镜像，Argo CD 会自动检测到 Git 仓库中的更新，并且将集群中 Deployment 的镜像更新为 Git 仓库中最新设置的镜像版本。
 
-# 3 例子: 用 CLI部署应用
+
+# 3 Register A Cluster To Deploy Apps To (Optional)[¶](https://argo-cd.readthedocs.io/en/stable/getting_started/#5-register-a-cluster-to-deploy-apps-to-optional "Permanent link")
+
+This step registers a cluster's credentials to Argo CD, and is only necessary when deploying a pplication  to an external cluster. When deploying internally (to the same cluster that Argo CD is running in), https://kubernetes.default.svc should be used as the application's K8s API server address.
+
+First list all clusters contexts in your current kubeconfig:
+
+```
+kubectl config get-contexts -o name
+```
+
+Choose a context name from the list and supply it to `argocd cluster add CONTEXTNAME`. For example, for docker-desktop context, run:
+
+```
+argocd cluster add docker-desktop
+```
+
+The above command installs a ServiceAccount (`argocd-manager`), into the kube-system namespace of that kubectl context, and binds the service account to an admin-level ClusterRole. Argo CD uses this service account token to perform its management tasks (i.e. deploy/monitoring).
+
+Note
+
+The rules of the `argocd-manager-role` role can be modified such that it only has `create`, `update`, `patch`, `delete` privileges to a limited set of namespaces, groups, kinds. However `get`, `list`, `watch` privileges are required at the cluster-scope for Argo CD to function.
+
+# 4 例子: 用 CLI部署应用
 
 https://blog.csdn.net/chengyinwu/article/details/131957249
 
-## 3.1 配置 ArgoCD 仓库访问权限（可选）
+## 4.1 配置 ArgoCD 仓库访问权限（可选）
+
+argocd login localhost:8080 --username admin --password=YeGXj5kU5B3aIg5h
+
+
 ```
 $ argocd login 127.0.0.1:8080 --insecure    #更换地址
 Username: admin
@@ -515,7 +542,7 @@ Password:
 将 $USERNAME 替换为 GitHub 账户 ID，将 $PASSWORD 替换为 GitHub Personal Token，Token创建链接：https://github.com/settings/tokens/new
 
 
-## 3.2 创建 ArgoCD 应用
+## 4.2 创建 ArgoCD 应用
 
 ArgoCD 同时支持使用 Helm Chart、Kustomize 和 Manifest 来创建应用，本次实践以示例应用的 Helm Chart 为例。通过argocd app create命令来创建应用:
 
@@ -544,7 +571,7 @@ argocd app create guestbook --repo https://github.com/argoproj/argocd-example-ap
 
 
 
-## 3.3 检查 ArgoCD 同步状态
+## 4.3 检查 ArgoCD 同步状态
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/ce4ff4b307a74092afaba1071baa1de2.png)
 
@@ -562,7 +589,7 @@ CURRENT SYNC STATUS： 应用定义和集群对象的差异状态，也包含下
 LAST SYNC RESULT： 最后一次同步到 Git 仓库的信息，包括 Commit ID 和提交者信息。
 
 
-## 3.4 访问应用
+## 4.4 访问应用
 
 当应用健康状态变为 Healthy 之后，我们就可以访问应用了。
 
@@ -575,7 +602,7 @@ frontend-service   70m
 访问应用链接：http://frontend.demo.com
 
 
-## 3.5 连接 GitOps 工作流
+## 4.5 连接 GitOps 工作流
 
 
 在完成 ArgoCD 的应用配置之后，我们就已经将示例应用的 Helm Chart 定义和集群资源关联起来了，但整个 GitOps 工作流还缺少非常重要的一部分，就是上面提到的自动更新 Helm Chart values.yaml 文件镜像版本的部分，在下面这张示意图中用“❌”把这个环节标记了出来。
@@ -606,7 +633,7 @@ frontend-service   70m
 到这里， 一个完整的 GitOps 工作流就建立好了。
 
 
-## 3.6 体验 GitOps 工作流
+## 4.6 体验 GitOps 工作流
 
 尝试修改 frontend/src/App.js 文件，例如修改文件第 49 行的“Hi! I am a geekbang”。修改完成后， 将代码推送到 GitHub 仓库 main 分支，此时，GitHub Action 会自动构建镜像，并且还会更新代码仓库中 Helm values.yaml 文件的镜像版本。
 
@@ -623,7 +650,7 @@ ArgoCD 默认每 3 分钟会拉取仓库检查是否有新的提交，你也可�
 ArgoCD 同步完成后，我们可以在“LAST SYNC RESULT”一栏中看到 GitHub Action 修改 values.yaml 的提交记录，当应用状态为 Healthy 时，我们就可以访问新的应用版本了。
 
 
-# 4 例子: 用YAML 文件声明式地创建 Argo CD 应用
+# 5 例子: 用YAML 文件声明式地创建 Argo CD 应用
 
 
 我们还可以通过 Argo CD 提供的命令行工具来部署应用，经过上一节的步骤，我们已经登录了 API Server，我们只需要执行下面的 argocd app create 命令即可创建 guestbook 应用：
@@ -744,10 +771,10 @@ application 'guestbook' deleted
 
 
 
-# 5 Sync (Deploy) The Application
+# 6 Sync (Deploy) The Application
 
 
-## 5.1 Syncing via CLI[¶](https://argo-cd.readthedocs.io/en/stable/getting_started/#syncing-via-cli "Permanent link")
+## 6.1 Syncing via CLI[¶](https://argo-cd.readthedocs.io/en/stable/getting_started/#syncing-via-cli "Permanent link")
 
 Once the guestbook application is created, you can now view its status:
 
@@ -777,7 +804,7 @@ argocd app sync guestbook
 
 This command retrieves the manifests from the repository and performs a `kubectl apply` of the manifests. The guestbook app is now running and you can now view its resource components, logs, events, and assessed health status.
 
-## 5.2 Syncing via UI[¶](https://argo-cd.readthedocs.io/en/stable/getting_started/#syncing-via-ui "Permanent link")
+## 6.2 Syncing via UI[¶](https://argo-cd.readthedocs.io/en/stable/getting_started/#syncing-via-ui "Permanent link")
 
 ![guestbook app](https://argo-cd.readthedocs.io/en/stable/assets/guestbook-app.png) ![view app](https://argo-cd.readthedocs.io/en/stable/assets/guestbook-tree.png)
 

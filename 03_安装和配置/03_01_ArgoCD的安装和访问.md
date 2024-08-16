@@ -227,6 +227,7 @@ Default namespace for `kubectl` config must be set to `argocd`. This is only nee
 
 
 # 6 Download Argo CD CLI 
+https://foxutech.medium.com/argo-cd-cli-installation-and-commands-65ab578ed75
 
 Download the latest Argo CD version from [https://github.com/argoproj/argo-cd/releases/latest](https://github.com/argoproj/argo-cd/releases/latest). More detailed installation instructions can be found via the [CLI installation documentation](https://argo-cd.readthedocs.io/en/stable/cli_installation/).
 
@@ -234,6 +235,36 @@ Also available in Mac, Linux and WSL Homebrew:
 ```
 brew install argocd
 ```
+
+## 6.1 wsl 
+
+curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+rm argocd-linux-amd64
+
+结束 
+
+
+## 6.2 windows 
+
+1 先通过下面的方法 下载 argocd.exe 
+
+Download With PowerShell: Invoke-WebRequest
+
+You can view the latest version of Argo CD at the link above or run the following command to grab the version:
+
+$version = (Invoke-RestMethod https://api.github.com/repos/argoproj/argo-cd/releases/latest).tag_name
+
+Replace $version in the command below with the version of Argo CD you would like to download:
+
+$url = "https://github.com/argoproj/argo-cd/releases/download/" + $version + "/argocd-windows-amd64.exe"
+$output = "argocd.exe"Invoke-WebRequest -Uri $url -OutFile $output
+
+2 将 argoc.exe 手动 放入 ·`c:\Users\yzh\argocd\`中 
+
+3 将 `c:\Users\yzh\argocd\`  写入 path 中 
+
+就可以了 
 
 
 # 7 Access The Argo CD API Server
@@ -359,6 +390,7 @@ The CLI environment must be able to communicate with the Argo CD API server. If 
 
 The initial password for the `admin` account is auto-generated and stored as clear text in the field `password` in a secret named `argocd-initial-admin-secret` in your Argo CD installation namespace. You can simply retrieve this password using the `argocd` CLI:
 
+
 ```
 argocd admin initial-password -n argocd
 
@@ -443,3 +475,8 @@ Password:
 'admin:login' logged in successfully
 Context '10.233.37.63' updated
 ```
+
+
+# 11 修改密码 Change the password using the command:
+
+argocd account update-password
