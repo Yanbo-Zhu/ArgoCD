@@ -26,6 +26,7 @@ spec:
 ## 1.1 spec.source
 
 ### 1.1.1 helm chart 
+https://argo-cd.readthedocs.io/en/stable/user-guide/helm/#values
 
 When creating an application from a Helm repository, the chart attribute must be specified instead of the path attribute within spec.source.
 
@@ -38,6 +39,21 @@ spec:
 ```
 
 
+Order of precedence is parameters > valuesObject  (source.helm.valuesObject) > values  (source.helm.values) > valueFiles  (source.helm.valuesFiles)> helm repository values.yaml (see Here for a more detailed example)
+
+Values injections have the following order of precedence `parameters > valuesObject > values > valueFiles > helm repository values.yaml` Or rather
+
+```
+    lowest  -> valueFiles
+            -> values
+            -> valuesObject
+    highest -> parameters
+```
+
+so values/valuesObject trumps valueFiles, and parameters trump both.
+
+
+When multiple of the same key are found in mutlipe values.yaml ,  the last one wins i.e 
 
 ### 1.1.2 kustomize.namespace
 
